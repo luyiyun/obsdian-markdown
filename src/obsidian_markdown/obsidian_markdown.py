@@ -53,13 +53,19 @@ class ObsidianMarkdown:
                     parent.children.append(node)
                 else:
                     parent.children.insert(0, node)
-                if forward is not None:
+                if forward:
                     self.parse(forward, parent=parent, append=False)
-                if backward is not None:
+                if backward:
                     self.parse(backward, parent=parent, append=True)
                 if not node.is_leaf:
-                    self.parse(node.raw, parent=node, append=True)
-                    node.raw = None  # clear the raw text to avoid duplication
+                    if not node.children:  # empty
+                        self.parse(node.raw, parent=node, append=True)
+                        node.raw = None  # clear the raw text to avoid duplication
+                    else:
+                        for child in node.children:
+                            if child.is_leaf:
+                                continue
+                            self.parse(child.raw, parent=child, append=True)
                 break
             else:
                 text = backward

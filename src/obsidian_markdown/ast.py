@@ -30,7 +30,7 @@ class ASTnode:
 
     def print(self, indent: int = 0):
         print(
-            f"{indent *' '}{self.name}: {str(self.data)[:20]}"  # ": {self.raw[:100] if self.raw is not None else ''}"
+            f"{indent *' '}{self.name}: {str(self.data)[:20]} | {repr(self.raw)[:20]}"
         )
         if len(self.children) > 0:
             for child in self.children:

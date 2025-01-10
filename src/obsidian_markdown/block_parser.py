@@ -246,18 +246,56 @@ class ImageLinkParser:
         )
 
 
-class ListParser:
+class ListBlockParser:
     def __init__(self, order: bool = False) -> None:
         # TODO:
         # List:
         #  - ListItem 可能还有children
         #   - children
         #  - ListItem
-        if order:
-            pass
-            # pattern = (
-            #     r'^(?P<list_1>\s*?)'
-            #     r'(?P<list_2>[\*\+-]|\d{1,9}[.)])'
-            #     r'(?P<list_3>[ \t]*|[ \t].+)$'
-            # )
-            # self.pattern =
+        if not order:
+            self.pattern = re.compile(
+                r"(?m:^)(?P<start>\s*?)"
+                r"(?P<icon>[\*\+-]) +"
+                r"(?P<content>(?s:.)*?)"
+                r"(?P<end>(\n\n[^\t \*\+-])|$)",
+                re.VERBOSE,
+            )
+            self.head_icon = re.compile(
+                r"(?m:^)"  # match start of line
+                r"(?P<icon>[\*\+-])"  # match list icon: + or - or *
+                r" +"  # match one or more spaces after list icon
+                r"(?P<content>(?s:.)*?)"  # match content of each list item
+                r"(?=((?m:^)(?P=icon)|$))",  # match next start of list item, and use lookahead assertion (?=...) to doesn't consume it
+                re.VERBOSE,
+            )
+        else:
+            raise NotImplementedError
+
+    def __call__(self, text: str) -> tuple[str | None, ASTnode | None, str | None]:
+        text = preprocess(text)
+        match = self.pattern.search(text)
+        if not match:
+            return None, None, text
+
+        forward = text[: match.start()].strip() if match.start() > 0 else None
+        backward = (
+            text[match.start("end") :].strip()
+            if match.start("end") < len(text)
+            else None
+        )
+        raw = text[match.start() : match.start("end")]
+        item_raws = [item[2] for item in self.head_icon.finditer(raw)]
+
+        return (
+            forward,
+            ASTnode(
+                "list_block",
+                pattern=self.pattern,
+                raw=None,
+                children=[
+                    ASTnode("list_item", raw=item_raw.strip()) for item_raw in item_raws
+                ],
+            ),
+            backward,
+        )
