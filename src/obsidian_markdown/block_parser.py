@@ -1,4 +1,5 @@
 import re
+from itertools import zip_longest
 
 import yaml
 
@@ -31,7 +32,10 @@ class FrontMatterParser:
 
 class CodeBlockParser:
     def __init__(self) -> None:
-        self.pattern = re.compile(r"```(?P<lang>.*?)\n(?P<code>.+?)```", re.DOTALL)
+        self.pattern = re.compile(
+            r"(?m:^)(?P<indent>\s*)```(?P<lang>.*?)\n(?P<code>(?s:.)*?)(?m:^)(?P=indent)```\s*(?m:$)",
+            re.VERBOSE,
+        )
         self.code_id_pattern = re.compile(r"\(\[<@#\$code_id (\d)&\*\%\)\]>")
         self.init()
 
@@ -44,13 +48,15 @@ class CodeBlockParser:
         if not match:
             return text
 
-        others = parts[::3]
-        langs = parts[1::3]
-        codes = parts[2::3]
+        others = parts[::4]
+        indents = parts[1::4]
+        langs = parts[2::4]
+        codes = parts[3::4]
 
         code_ids = []
         for i, (lang, code) in enumerate(zip(langs, codes)):
             code_ids.append(f"([<@#$code_id {i}&*%)]>")
+            code = "\n".join([line[len(indents[i]) :] for line in code.split("\n")])
             self.code_nodes.append(
                 ASTnode(
                     "code_block",
@@ -62,8 +68,10 @@ class CodeBlockParser:
             )
 
         text_clean = ""
-        for other, code_id in zip(others, code_ids):
-            text_clean += other + code_id
+        for other, code_id, indent in zip_longest(
+            others, code_ids, indents, fillvalue=""
+        ):
+            text_clean += other + indent + code_id
         text_clean += parts[-1]
         return text_clean
 
@@ -254,14 +262,27 @@ class ListBlockParser:
         #   - children
         #  - ListItem
         if not order:
-            self.pattern = re.compile(
-                r"(?m:^)(?P<start>\s*?)"
-                r"(?P<icon>[\*\+-]) +"
-                r"(?P<content>(?s:.)*?)"
-                r"(?P<end>(\n\n[^\t \*\+-])|$)",
+            # self.pattern = re.compile(
+            #     r"(?m:^)(?P<start>\s*?)"
+            #     r"(?P<icon>[\*\+-]) +"
+            #     r"(?P<content>(?s:.)*?)"
+            #     r"(?P<end>(\n\n[^\t( +)?P=icon])|$)",
+            #     re.VERBOSE,
+            # )
+            # self.pattern = re.compile(
+            #     r"(?m:^)(?P<start>\s*?)"
+            #     r"(?P<icon>[\*\+-]) +"
+            #     r"(?P<content>(?s:.)*)"
+            #     r"(?P<end>(?!(^\s*(?P=icon)?)|( *\n)))",
+            #     re.VERBOSE,
+            # )
+            self.icon_pattern = re.compile(
+                r"(?m:^)"  # match start of line
+                r"(?P<icon>\s*[\*\+-]\s+)"  # match list icon: + or - or *
+                r" +",  # match one or more spaces after list icon
                 re.VERBOSE,
             )
-            self.head_icon = re.compile(
+            self.item_pattern = re.compile(
                 r"(?m:^)"  # match start of line
                 r"(?P<icon>[\*\+-])"  # match list icon: + or - or *
                 r" +"  # match one or more spaces after list icon
@@ -272,29 +293,89 @@ class ListBlockParser:
         else:
             raise NotImplementedError
 
+        self.begin_blank = re.compile(r"^\s*", re.M)
+
     def __call__(self, text: str) -> tuple[str | None, ASTnode | None, str | None]:
-        text = preprocess(text)
-        match = self.pattern.search(text)
-        if not match:
+        text = preprocess(text, end="")
+        parts = re.split(r"(\n+)", text)
+        lines = parts[::2]
+        line_breaks = parts[1::2]
+        forward, raw, raw_item, backward = "", [], "", ""
+        flag_area, head_icon, head_indent = "forward", None, ""
+        for line, brk in zip_longest(lines, line_breaks, fillvalue=""):
+            if flag_area == "forward":
+                icon_match = self.icon_pattern.match(line)
+                if icon_match:
+                    head_icon = icon_match.group("icon")
+                    flag_area = "content"
+                # for icon in ["+", "-", "*"]:
+                #     if line.startswith(f"{icon} "):
+                #         flag = "content"
+                #         head_icon = icon
+                #         break
+            elif flag_area == "content":
+                if not (
+                    line.startswith(f"{head_indent}{head_icon}")
+                    or line.startswith("  ")
+                    or line.strip() == ""
+                ):
+                    flag_area = "backward"
+
+            if flag_area == "forward":
+                forward += line + brk
+            elif flag_area == "content":
+                if line.startswith(head_icon) and raw_item:
+                    raw.append(raw_item)
+                    raw_item = ""
+                # elif line.startswith(head_indent):
+                #     pass
+                # else:
+                #     raise ValueError(
+                #         f"Invalid line without beginning icon or indent blank: {line}"
+                #     )
+                line = line[len(head_icon) :]
+                raw_item += line + brk
+            elif flag_area == "backward":
+                backward += line + brk
+
+        if raw_item:
+            raw.append(raw_item)
+
+        if flag_area == "forward":
             return None, None, text
 
-        forward = text[: match.start()].strip() if match.start() > 0 else None
-        backward = (
-            text[match.start("end") :].strip()
-            if match.start("end") < len(text)
-            else None
-        )
-        raw = text[match.start() : match.start("end")]
-        item_raws = [item[2] for item in self.head_icon.finditer(raw)]
+        forward = forward or None
+        backward = backward or None
+
+        # text = preprocess(text)
+        # match = self.pattern.search(text)
+        # if not match:
+        #     return None, None, text
+        #
+        # print(match)
+        # forward = text[: match.start()].strip() if match.start() > 0 else None
+        # backward = (
+        #     text[match.start("end") :].strip()
+        #     if match.start("end") < len(text)
+        #     else None
+        # )
+        # raw = text[match.start() : match.start("end")]
+        #
+        # remove the equal-length blank at begin of each line
+        # begin_blanks = self.begin_blank.findall(raw)
+        # blank_min_len = min(len(b) for b in begin_blanks)
+        # raw = re.sub(r"^" + blank_min_len * r" ", r"", raw, flags=re.M)
+
+        # item_raws = [item[2] for item in self.item_pattern.finditer(raw)]
 
         return (
             forward,
             ASTnode(
                 "list_block",
-                pattern=self.pattern,
+                pattern=None,  # self.pattern,
                 raw=None,
                 children=[
-                    ASTnode("list_item", raw=item_raw.strip()) for item_raw in item_raws
+                    ASTnode("list_item", raw=item_raw.strip()) for item_raw in raw
                 ],
             ),
             backward,
