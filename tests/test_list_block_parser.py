@@ -12,6 +12,7 @@ def test_base_unordered_parse(test_data: dict[str, str]):
         assert node.name == "list_block"
         assert len(node.children) == 3
         assert not node.data["order"]
+        assert not node.data["task_icons"]
         assert node.data["icons"] == [f"{icon} "] * 3
         for child, line in zip(node.children, ["AAA", "BBB", "CCC"]):
             assert child.name == "list_item"
@@ -141,3 +142,14 @@ def test_ordered_parse_with_nested_list(test_data: dict[str, str]):
         _, node, _ = parser(child.raw)
         assert node.name == "list_block"
         assert len(node.children) == nitems
+
+
+def test_task_list_parse(test_data: dict[str, str]):
+    content = test_data["task_list_base"]
+    parser = ListBlockParser(order=False)
+    _, node, _ = parser(content)
+    assert node.name == "list_block"
+    assert node.data["task_icons"] == [" ", " ", "x"]
+    for child, line in zip(node.children, ["aaa", "bbb", "cccc"]):
+        assert child.name == "list_item"
+        assert child.raw == line

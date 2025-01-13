@@ -121,3 +121,12 @@
 
 123455
 ===ordered_list_block_nest===
+
+===task_list_base===
+
+- [ ] aaa
+- [ ] bbb
+- [x] cccc
+
+123455
+===task_list_base===
