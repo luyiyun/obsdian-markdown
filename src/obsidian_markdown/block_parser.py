@@ -256,29 +256,28 @@ class ImageLinkParser:
 
 class ListBlockParser:
     def __init__(self, order: bool = False) -> None:
-        # TODO:
-        # List:
-        #  - ListItem 可能还有children
-        #   - children
-        #  - ListItem
-        if not order:
-            # self.pattern = re.compile(
-            #     r"(?m:^)(?P<start>\s*?)"
-            #     r"(?P<icon>[\*\+-]) +"
-            #     r"(?P<content>(?s:.)*?)"
-            #     r"(?P<end>(\n\n[^\t( +)?P=icon])|$)",
-            #     re.VERBOSE,
-            # )
-            # self.pattern = re.compile(
-            #     r"(?m:^)(?P<start>\s*?)"
-            #     r"(?P<icon>[\*\+-]) +"
-            #     r"(?P<content>(?s:.)*)"
-            #     r"(?P<end>(?!(^\s*(?P=icon)?)|( *\n)))",
-            #     re.VERBOSE,
-            # )
+        self.order = order
+        self.begin_blank = re.compile(r"^\s*", re.M)
+        if order:
             self.icon_pattern = re.compile(
                 r"(?m:^)"  # match start of line
-                r"(?P<icon>\s*[\*\+-]\s+)"  # match list icon: + or - or *
+                r"(?P<icon>\d{1,3}\.\s+)"  # match list icon: 1. 2. 3.
+                r" +",  # match one or more spaces after list icon
+                re.VERBOSE,
+            )
+            self.item_pattern = re.compile(
+                r"(?m:^)"  # match start of line
+                r"(?P<icon>\d{1,3}\.)"  # match list icon: 1. 2. 3.
+                r" +"  # match one or more spaces after list icon
+                r"(?P<content>(?s:.)*?)"  # match content of each list item
+                r"(?=((?m:^)(\d{1,3}\.)|$))",  # match next start of list item, and use lookahead assertion (?=...) to doesn't consume it
+                re.VERBOSE,
+            )
+
+        else:
+            self.icon_pattern = re.compile(
+                r"(?m:^)"  # match start of line
+                r"(?P<icon>[\*\+-]\s+)"  # match list icon: + or - or *
                 r" +",  # match one or more spaces after list icon
                 re.VERBOSE,
             )
@@ -290,10 +289,6 @@ class ListBlockParser:
                 r"(?=((?m:^)(?P=icon)|$))",  # match next start of list item, and use lookahead assertion (?=...) to doesn't consume it
                 re.VERBOSE,
             )
-        else:
-            raise NotImplementedError
-
-        self.begin_blank = re.compile(r"^\s*", re.M)
 
     def __call__(self, text: str) -> tuple[str | None, ASTnode | None, str | None]:
         text = preprocess(text, end="")
@@ -301,38 +296,28 @@ class ListBlockParser:
         lines = parts[::2]
         line_breaks = parts[1::2]
         forward, raw, raw_item, backward = "", [], "", ""
-        flag_area, head_icon, head_indent = "forward", None, ""
+        flag_area, head_icon, head_icons = "forward", None, []
         for line, brk in zip_longest(lines, line_breaks, fillvalue=""):
             if flag_area == "forward":
                 icon_match = self.icon_pattern.match(line)
                 if icon_match:
                     head_icon = icon_match.group("icon")
                     flag_area = "content"
-                # for icon in ["+", "-", "*"]:
-                #     if line.startswith(f"{icon} "):
-                #         flag = "content"
-                #         head_icon = icon
-                #         break
             elif flag_area == "content":
-                if not (
-                    line.startswith(f"{head_indent}{head_icon}")
-                    or line.startswith("  ")
-                    or line.strip() == ""
-                ):
+                icon_match = self.icon_pattern.match(line)
+                if not (icon_match or line.startswith("  ") or line.strip() == ""):
                     flag_area = "backward"
+
+            # NOTE: when flag_area is "content", we certainly have icon_match
+            if icon_match:
+                head_icons.append(icon_match.group("icon"))
 
             if flag_area == "forward":
                 forward += line + brk
             elif flag_area == "content":
-                if line.startswith(head_icon) and raw_item:
+                if icon_match and raw_item:
                     raw.append(raw_item)
                     raw_item = ""
-                # elif line.startswith(head_indent):
-                #     pass
-                # else:
-                #     raise ValueError(
-                #         f"Invalid line without beginning icon or indent blank: {line}"
-                #     )
                 line = line[len(head_icon) :]
                 raw_item += line + brk
             elif flag_area == "backward":
@@ -346,28 +331,6 @@ class ListBlockParser:
 
         forward = forward or None
         backward = backward or None
-
-        # text = preprocess(text)
-        # match = self.pattern.search(text)
-        # if not match:
-        #     return None, None, text
-        #
-        # print(match)
-        # forward = text[: match.start()].strip() if match.start() > 0 else None
-        # backward = (
-        #     text[match.start("end") :].strip()
-        #     if match.start("end") < len(text)
-        #     else None
-        # )
-        # raw = text[match.start() : match.start("end")]
-        #
-        # remove the equal-length blank at begin of each line
-        # begin_blanks = self.begin_blank.findall(raw)
-        # blank_min_len = min(len(b) for b in begin_blanks)
-        # raw = re.sub(r"^" + blank_min_len * r" ", r"", raw, flags=re.M)
-
-        # item_raws = [item[2] for item in self.item_pattern.finditer(raw)]
-
         return (
             forward,
             ASTnode(
@@ -377,6 +340,7 @@ class ListBlockParser:
                 children=[
                     ASTnode("list_item", raw=item_raw.strip()) for item_raw in raw
                 ],
+                data={"order": self.order, "icons": head_icons},
             ),
             backward,
         )
