@@ -130,3 +130,22 @@
 
 123455
 ===task_list_base===
+
+===quote_base===
+
+> This is a quote.
+
+123455
+===quote_base===
+
+===quote_then_end===
+> This is a quote.
+===quote_then_end===
+
+===quote_multi_lines===
+
+> This is a quote.
+> This is the second line of the quote.
+> This is the third line of the quote.
+
+===quote_multi_lines===

@@ -265,14 +265,6 @@ class ListBlockParser:
                 r" +",  # match one or more spaces after list icon
                 re.VERBOSE,
             )
-            # self.item_pattern = re.compile(
-            #     r"(?m:^)"  # match start of line
-            #     r"(?P<icon>\d{1,3}\.)"  # match list icon: 1. 2. 3.
-            #     r" +"  # match one or more spaces after list icon
-            #     r"(?P<content>(?s:.)*?)"  # match content of each list item
-            #     r"(?=((?m:^)(\d{1,3}\.)|$))",  # match next start of list item, and use lookahead assertion (?=...) to doesn't consume it
-            #     re.VERBOSE,
-            # )
 
         else:
             self.icon_pattern = re.compile(
@@ -281,14 +273,6 @@ class ListBlockParser:
                 r" +",  # match one or more spaces after list icon
                 re.VERBOSE,
             )
-            # self.item_pattern = re.compile(
-            #     r"(?m:^)"  # match start of line
-            #     r"(?P<icon>[\*\+-])"  # match list icon: + or - or *
-            #     r" +"  # match one or more spaces after list icon
-            #     r"(?P<content>(?s:.)*?)"  # match content of each list item
-            #     r"(?=((?m:^)(?P=icon)|$))",  # match next start of list item, and use lookahead assertion (?=...) to doesn't consume it
-            #     re.VERBOSE,
-            # )
             self.task_pattern = re.compile(r"^\[(?P<status>.*?)\] ")
 
     def __call__(self, text: str) -> tuple[str | None, ASTnode | None, str | None]:
@@ -359,6 +343,39 @@ class ListBlockParser:
                     "icons": head_icons,
                     "task_icons": flag_icons,
                 },
+            ),
+            backward,
+        )
+
+
+class QuoteBlockParser:
+    def __init__(self) -> None:
+        self.pattern = re.compile(
+            r"(?m:^)> "  # 匹配行首的>和空格
+            r"(?!\[.+?\].*?\n)"  # 匹配category, 如![note]
+            r"(?s:.)*?"  # 匹配content
+            r"(?=((?m:^)[^>])|$)",
+            re.VERBOSE,
+        )
+        self.line_start_pattern = re.compile(r"^> ", re.M)
+
+    def __call__(self, text: str) -> tuple[str | None, ASTnode | None, str | None]:
+        text = preprocess(text)
+        match = self.pattern.search(text)
+        if not match:
+            return None, None, text
+
+        forward = text[: match.start()] if match.start() > 0 else None
+        backward = text[match.end() :] if match.end() < len(text) else None
+        raw = match.group()
+        raw = self.line_start_pattern.sub(r"", raw)
+
+        return (
+            forward,
+            ASTnode(
+                "quote",
+                pattern=self.pattern,
+                raw=raw,
             ),
             backward,
         )
