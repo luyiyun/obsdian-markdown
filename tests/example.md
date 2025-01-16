@@ -158,3 +158,22 @@ CCCC
 
 DDDD
 ===paragraph_base===
+
+===front_matter_base===
+
+---
+title: Example
+tags:
+
+- tag1
+- tag2
+- tag3
+author: admin
+created: 2024-12-25 16:10
+publish: true
+
+---
+
+1234
+
+===front_matter_base===
