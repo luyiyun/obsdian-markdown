@@ -149,3 +149,12 @@
 > This is the third line of the quote.
 
 ===quote_multi_lines===
+
+===paragraph_base===
+AAAA
+BBBB
+
+CCCC
+
+DDDD
+===paragraph_base===

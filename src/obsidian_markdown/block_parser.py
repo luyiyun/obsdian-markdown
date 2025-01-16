@@ -1,10 +1,27 @@
+from faulthandler import is_enabled
 import re
 from itertools import zip_longest
+from abc import abstractmethod
 
 import yaml
 
-from .utils import preprocess
 from .ast import ASTnode
+
+
+def preprocess(text, end="\n") -> str:
+    if end and not text.endswith("\n"):
+        text += "\n"
+    return text
+
+
+class BlockParser:
+    @abstractmethod
+    def __init__(self) -> None:
+        pass
+
+    @abstractmethod
+    def __call__(self, text: str) -> tuple[str | None, ASTnode | None, str | None]:
+        pass
 
 
 class FrontMatterParser:
@@ -378,4 +395,17 @@ class QuoteBlockParser:
                 raw=raw,
             ),
             backward,
+        )
+
+
+class ParagraphParser:
+    def __init__(self) -> None:
+        self.pattern = re.compile(r"\n\s*\n")
+
+    def __call__(self, text: str) -> tuple[None, list[ASTnode], None]:
+        paragraphs = self.pattern.split(text)
+        return (
+            None,
+            [ASTnode("paragraph", None, raw=para, is_leaf=True) for para in paragraphs],
+            None,
         )

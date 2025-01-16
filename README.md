@@ -4,13 +4,45 @@ A tool to parse obsidian markdown note into a abstract syntax tree (AST) and the
 
 ## TODO LIST
 
+### Global Tasks
+
 - [x] Use uv to manage the project
-- [-] Add code block parser
-- [-] Add math block parser
-- [-] Add Section block parser
-- [-] Add image link parser
-- [x] Add call out parser
-- [-] Add front matter parser
-- [ ] Add list block parser
-- [ ] rewrite the paragraph parser, make it as a block containing multiple lines
-- [ ] Add inline parser
+- [x] Use pytest to write test cases
+- [ ] Main class (`ObsidianMarkdown`)
+- [ ] parse method (`ObsidianMarkdown.parse`)
+- [ ] render method (`ObsidianMarkdown.parse`)
+
+### Block Parsers
+
+- [-] front matter block
+- [x] Paragraph
+- [ ] Line
+- [-] image link, including internal and external link styles
+- [-] Section block, based on heading level
+- [x] quote block
+- [-] code block
+- [-] math block
+- [-] call out
+- [-] front matter
+- [x] list block, including ordered, unordered, and task list
+- [ ] horizontal rule
+- [ ] footnote block
+- [ ] comments block(%% %%), which is only visible in editing view
+- [ ] tables
+- [ ] [link to a block](https://help.obsidian.md/Linking+notes+and+files/Internal+links#Link+to+a+block+in+a+note)
+
+### Inline Parsers
+
+- [ ] bold
+- [ ] italic
+- [ ] highlight
+- [ ] Strikethroughs
+- [ ] internal link
+- [ ] external link
+- [ ] inline code
+- [ ] inline footnote mark
+- [ ] inline comments
+
+### Default Render
+
+### Hugo Render

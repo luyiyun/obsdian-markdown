@@ -6,8 +6,8 @@ from .block_parser import (
     CalloutParser,
     ImageLinkParser,
     CodeBlockParser,
+    ParagraphParser,
 )
-from .utils import preprocess
 
 
 class ObsidianMarkdown:
@@ -20,24 +20,23 @@ class ObsidianMarkdown:
             + [SectionParser(i) for i in range(1, 6)]
             + [MathBlockParser(), CalloutParser(), ImageLinkParser()]
             + self.block_parsers_w_preproc
-            + [
-                lambda text: (
-                    None,
-                    ASTnode("paragraph", None, raw=preprocess(text), is_leaf=True),
-                    None,
-                ),  # default parser
-            ]
+            + [ParagraphParser()]
         )
 
         # TODO: is_leaf of paragraph is true, so the inline parsers are not used
-        self.inline_parsers = []
+        self.line_parsers = []
 
     def parse(self, text: str, parent: ASTnode = None, append: bool = True):
+        text = text.replace("\r\n", "\n")
+        text = text.replace("\r", "\n")
+        if not text.endswith("\n"):
+            text += "\n"
+
         if parent is None:
             parent = ASTnode("root", None)  # root node
 
         if parent.name == "paragraph":
-            parsers = self.inline_parsers
+            parsers = self.line_parsers
         else:
             parsers = self.block_parsers
             # NOTE: 一些嵌套在其他块级结构中的代码块，比如再callout中的代码块，
@@ -46,28 +45,35 @@ class ObsidianMarkdown:
                 text = parser.preprocess(text)
 
         for parser in parsers:
-            forward, node, backward = parser(text)
-            if node is not None:
+            forward, nodes, backward = parser(text)
+            if nodes is None:
+                text = backward
+                continue
+
+            if isinstance(nodes, ASTnode):
+                nodes = [nodes]
+
+            if append:
+                parent.children += nodes
+            else:
+                parent.children = nodes + parent.children
+
+            for node in nodes:
                 node.parent = parent
-                if append:
-                    parent.children.append(node)
-                else:
-                    parent.children.insert(0, node)
                 if forward:
                     self.parse(forward, parent=parent, append=False)
                 if backward:
                     self.parse(backward, parent=parent, append=True)
-                if not node.is_leaf:
-                    if not node.children:  # empty
-                        self.parse(node.raw, parent=node, append=True)
-                        node.raw = None  # clear the raw text to avoid duplication
-                    else:
-                        for child in node.children:
-                            if child.is_leaf:
-                                continue
-                            self.parse(child.raw, parent=child, append=True)
-                break
-            else:
-                text = backward
+
+                if node.is_leaf:
+                    continue
+
+                nodes_next = node.children if node.children else node
+                for nni in nodes_next:
+                    self.parse(nni.raw, parent=nni, append=True)
+                    nni.raw = None  # clear the raw text to avoid duplication
+
+            # the text has to be parsered by one parser, so we can break here
+            break
 
         return parent
