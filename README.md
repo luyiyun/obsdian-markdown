@@ -22,8 +22,7 @@ A tool to parse obsidian markdown note into a abstract syntax tree (AST) and the
 - [x] quote block
 - [-] code block
 - [-] math block
-- [-] call out
-- [-] front matter
+- [x] call out
 - [x] list block, including ordered, unordered, and task list
 - [ ] horizontal rule
 - [ ] footnote block

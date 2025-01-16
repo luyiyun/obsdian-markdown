@@ -177,3 +177,59 @@ publish: true
 1234
 
 ===front_matter_base===
+
+===callout_base===
+
+aaaaaa
+
+## title
+
+> [!warning]
+> bbbbbb
+
+cccccc
+===callout_base===
+
+===callout_wo_content===
+
+> [!note]+ callout title
+
+cccc
+
+===callout_wo_content===
+
+===callout_wo_succeed===
+
+> [!note]+ callout title
+===callout_wo_succeed===
+
+===callout_title===
+
+> [!note]+ callout title
+
+cccc
+
+===callout_title===
+
+===callout_collapse===
+
+> [!note]+ callout title
+
+cccc
+
+===callout_collapse===
+
+===callout_nest===
+
+aaaaaa
+
+## title
+
+> [!warning]
+> bbbbbb
+> > [!note]- nested
+> > cccc
+
+cccccc
+
+===callout_nest===
