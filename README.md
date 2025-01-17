@@ -18,13 +18,13 @@ A tool to parse obsidian markdown note into a abstract syntax tree (AST) and the
 - [x] Paragraph
 - [ ] Line
 - [-] image link, including internal and external link styles
-- [-] Section block, based on heading level
+- [x] Section block, based on heading level
 - [x] quote block
-- [-] code block
-- [-] math block
+- [x] code block, use the same method as other blocks to parse
+- [x] math block
 - [x] call out
 - [x] list block, including ordered, unordered, and task list
-- [ ] horizontal rule
+- [x] horizontal rule
 - [ ] footnote block
 - [ ] comments block(%% %%), which is only visible in editing view
 - [ ] tables

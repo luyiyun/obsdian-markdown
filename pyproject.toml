@@ -5,9 +5,7 @@ description = "A Python package for parser the obsidian markdwon file and conver
 readme = "README.md"
 authors = [{ name = "Rong Zhiwei", email = "18845728185@163.com" }]
 requires-python = ">=3.10"
-dependencies = [
-    "pyyaml>=6.0.2",
-]
+dependencies = ["pyyaml>=6.0.2"]
 
 [project.scripts]
 obsidian-markdown = "obsidian_markdown:main"
@@ -17,7 +15,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [dependency-groups]
-dev = [
-    "ipdb>=0.13.13",
-    "pytest>=8.3.4",
-]
+dev = ["ipdb>=0.13.13", "pytest>=8.3.4"]
+
+[tool.pytest.ini_options]
+addopts = "-s"

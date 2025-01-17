@@ -12,15 +12,18 @@ from .block_parser import (
 
 class ObsidianMarkdown:
     def __init__(self):
-        self.block_parsers_w_preproc = [CodeBlockParser()]
         self.block_parsers = (
             [
                 FrontMatterParser(),
             ]
             + [SectionParser(i) for i in range(1, 6)]
-            + [MathBlockParser(), CalloutParser(), ImageLinkParser()]
-            + self.block_parsers_w_preproc
-            + [ParagraphParser()]
+            + [
+                MathBlockParser(),
+                CalloutParser(),
+                ImageLinkParser(),
+                CodeBlockParser(),
+                ParagraphParser(),
+            ]
         )
 
         # TODO: is_leaf of paragraph is true, so the inline parsers are not used
@@ -35,15 +38,9 @@ class ObsidianMarkdown:
         if parent is None:
             parent = ASTnode("root", None)  # root node
 
-        if parent.name == "paragraph":
-            parsers = self.line_parsers
-        else:
-            parsers = self.block_parsers
-            # NOTE: 一些嵌套在其他块级结构中的代码块，比如再callout中的代码块，
-            # 因为前面前面可能存在'> '，这导致其无法被第一次parser处理，需要重新处理一下
-            for parser in self.block_parsers_w_preproc:
-                text = parser.preprocess(text)
-
+        parsers = (
+            self.line_parsers if parent.name == "paragraph" else self.block_parsers
+        )
         for parser in parsers:
             forward, nodes, backward = parser(text)
             if nodes is None:

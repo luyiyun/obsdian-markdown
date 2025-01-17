@@ -49,13 +49,9 @@ def test_unordered_parse_with_code_block(test_data: dict[str, str]):
     cb_parser = CodeBlockParser()
     parser = ListBlockParser()
 
-    content = cb_parser.preprocess(content)
     _, node, _ = parser(content)
     assert node.name == "list_block"
     assert len(node.children) == 3
-    assert "code_id" in node.children[0].raw
-    assert "code_id" not in node.children[1].raw
-    assert "code_id" in node.children[2].raw
 
     _, cb_node, _ = cb_parser(node.children[0].raw)
     assert cb_node.name == "code_block"
@@ -106,13 +102,9 @@ def test_ordered_parse_with_code_block(test_data: dict[str, str]):
     cb_parser = CodeBlockParser()
     parser = ListBlockParser(order=True)
 
-    content = cb_parser.preprocess(content)
     _, node, _ = parser(content)
     assert node.name == "list_block"
     assert len(node.children) == 3
-    assert "code_id" in node.children[0].raw
-    assert "code_id" not in node.children[1].raw
-    assert "code_id" in node.children[2].raw
 
     _, cb_node, _ = cb_parser(node.children[0].raw)
     assert cb_node.name == "code_block"

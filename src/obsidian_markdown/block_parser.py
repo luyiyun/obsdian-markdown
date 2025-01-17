@@ -1,4 +1,3 @@
-from faulthandler import is_enabled
 import re
 from itertools import zip_longest
 from abc import abstractmethod
@@ -49,51 +48,52 @@ class FrontMatterParser:
 
 class CodeBlockParser:
     def __init__(self) -> None:
+        # TODO: support to parser code block in callout block
         self.pattern = re.compile(
-            r"(?m:^)(?P<indent>\s*)```(?P<lang>.*?)\n(?P<code>(?s:.)*?)(?m:^)(?P=indent)```\s*(?m:$)",
-            re.VERBOSE,
+            r"(?m:^)"
+            r"(?P<indent>\s*)"
+            r"```(?P<lang>.*?)\n"
+            r"(?P<code>(?s:.)*?)"
+            r"(?m:^)(?P=indent)```\s*(?m:$)",
         )
-        self.code_id_pattern = re.compile(r"\(\[<@#\$code_id (\d)&\*\%\)\]>")
-        self.init()
+        # self.code_id_pattern = re.compile(r"\(\[<@#\$code_id (\d)&\*\%\)\]>")
+        # self.init()
 
-    def init(self):
-        self.code_nodes = []
-
-    def preprocess(self, text: str) -> str:
-        parts = self.pattern.split(text)
-        match = len(parts) > 1
-        if not match:
-            return text
-
-        others = parts[::4]
-        indents = parts[1::4]
-        langs = parts[2::4]
-        codes = parts[3::4]
-
-        code_ids = []
-        for i, (lang, code) in enumerate(zip(langs, codes)):
-            code_ids.append(f"([<@#$code_id {i}&*%)]>")
-            code = "\n".join([line[len(indents[i]) :] for line in code.split("\n")])
-            self.code_nodes.append(
-                ASTnode(
-                    "code_block",
-                    pattern=self.pattern,
-                    raw=code,
-                    data={"lang": lang},
-                    is_leaf=True,
-                )
-            )
-
-        text_clean = ""
-        for other, code_id, indent in zip_longest(
-            others, code_ids, indents, fillvalue=""
-        ):
-            text_clean += other + indent + code_id
-        text_clean += parts[-1]
-        return text_clean
+    # def init(self):
+    #     self.code_nodes = []
+    #
+    # def preprocess(self, text: str) -> str:
+    #     parts = self.pattern.split(text)
+    #     match = len(parts) > 1
+    #     if not match:
+    #         return text
+    #     others = parts[::4]
+    #     indents = parts[1::4]
+    #     langs = parts[2::4]
+    #     codes = parts[3::4]
+    #
+    #     code_ids = []
+    #     for i, (lang, code) in enumerate(zip(langs, codes)):
+    #         code_ids.append(f"([<@#$code_id {i}&*%)]>")
+    #         code = "\n".join([line[len(indents[i]) :] for line in code.split("\n")])
+    #         self.code_nodes.append(
+    #             ASTnode(
+    #                 "code_block",
+    #                 pattern=self.pattern,
+    #                 raw=code,
+    #                 data={"lang": lang},
+    #                 is_leaf=True,
+    #             )
+    #         )
+    #
+    #     text_clean = ""
+    #     for other, code_id, indent in zip(others, code_ids, indents):
+    #         text_clean += other + indent + code_id
+    #     text_clean += parts[-1]
+    #     return text_clean
 
     def __call__(self, text: str) -> tuple[str | None, ASTnode | None, str | None]:
-        match = self.code_id_pattern.search(text)
+        match = self.pattern.search(text)
         if not match:
             return None, None, text
 
@@ -101,7 +101,13 @@ class CodeBlockParser:
         backward = text[match.end() :] if match.end() < len(text) else None
         return (
             forward,
-            self.code_nodes[int(match.group(1))],
+            ASTnode(
+                "code_block",
+                pattern=self.pattern,
+                raw=match.group("code"),
+                data={"lang": match.group("lang")},
+                is_leaf=True,
+            ),
             backward,
         )
 
@@ -116,13 +122,13 @@ class SectionParser:
 
         # 我们还要避免会匹配到注释
         self.pattern = re.compile(
-            r"((?m:^)\s*?"
-            + ("#" * level)
-            + r" "
-            + r"(?s:.)*?)"
-            + r"((?m:^)\s*?"
-            + ("#" * level)
-            + r" |$)",
+            r"(?m:^)"  # match start of line
+            r" {0,3}"  # match 0-3 spaces
+            rf"{'#' * level}"  # match specific-level number sign
+            r" "  # match one space after level sign
+            r"(?P<title>.*)\n"  # match title, here dot cannot match \n, so we use greedy mode
+            r"(?P<content>([^`]|(```(?s:.)*?```))*?)"  # match the all content under the title, and the code block tags (```) must be paired
+            rf"((?=(?m:^) {{0,3}}{"#" * level} )|$)",  # match the title line of next section, use loookahead assertion
         )
 
     def __call__(self, text: str) -> tuple[str | None, ASTnode | None, str | None]:
@@ -132,20 +138,17 @@ class SectionParser:
             return None, None, text
 
         forward = text[: match.start()] if match.start() > 0 else None
-        backward = text[match.end(1) :] if match.end(1) < len(text) else None
-        raw = match.group(1).strip()
-
-        # 将标题提取出来，只将后面的内容放到raw中，不然会陷入死循环
-        title_match = re.search(r"^#+\s*(.*?)\s*\n", raw)
-        raw = raw[title_match.end(1) :]
+        backward = text[match.end() :] if match.end() < len(text) else None
+        title = match.group("title")
+        raw = match.group("content")
 
         return (
             forward,
             ASTnode(
-                f"Section{self.level}",
+                f"section{self.level}",
                 pattern=self.pattern,
                 raw=raw,
-                data={"title": title_match.group(1).strip()},
+                data={"title": title},
             ),
             backward,
         )
@@ -408,4 +411,27 @@ class ParagraphParser:
             None,
             [ASTnode("paragraph", None, raw=para, is_leaf=True) for para in paragraphs],
             None,
+        )
+
+
+class HorizontalRuleParser:
+    def __init__(self) -> None:
+        self.pattern = re.compile(r"(?m:^)([-\*_]{3,}|\* \* \*|_ _ _|- - -)\s*\n")
+
+    def __call__(self, text: str) -> tuple[str | None, ASTnode | None, str | None]:
+        text = preprocess(text)
+        match = self.pattern.search(text)
+        if not match:
+            return None, None, text
+        forward = text[: match.start()] if match.start() > 0 else None
+        backward = text[match.end() :] if match.end() < len(text) else None
+        return (
+            forward,
+            ASTnode(
+                "horizontal_rule",
+                pattern=self.pattern,
+                raw=match.group(),
+                is_leaf=True,
+            ),
+            backward,
         )

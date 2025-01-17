@@ -1,4 +1,4 @@
-from obsidian_markdown.block_parser import CalloutParser
+from obsidian_markdown.block_parser import CalloutParser, CodeBlockParser
 
 
 class TestCalloutParser:
@@ -63,3 +63,21 @@ class TestCalloutParser:
         assert node2.data["collapse"] == "-"
         assert node2.data["title"] == "nested"
         assert node2.raw == "cccc"
+
+    # def test_parse_callouts_w_code(self, test_data: dict[str, str]):
+    #     text = test_data["callout_code"]
+    #     code_parser = CodeBlockParser()
+    #     text = code_parser.preprocess(text)
+    #     assert "([<@#$code_id 0&*%)]>" in text
+    #
+    #     cp = CalloutParser()
+    #     _, node, _ = cp(text)
+    #     assert node.name == "callout"
+    #     assert node.data["category"] == "note"
+    #
+    #     before, node2, after = code_parser(node.raw)
+    #     assert before.strip() == "bbbbbb"
+    #     assert after.strip() == ""
+    #     assert node2.name == "code_block"
+    #     assert node2.data["lang"] == "python"
+    #     assert node2.raw == 'print("Hello, world!")'
