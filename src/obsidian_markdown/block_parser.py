@@ -15,17 +15,8 @@ def preprocess(text, end="\n") -> str:
 
 class BlockParser:
     @abstractmethod
-    def __init__(self) -> None:
+    def get_ast_node(self, match: re.Match) -> ASTnode:
         pass
-
-    @abstractmethod
-    def __call__(self, text: str) -> tuple[str | None, ASTnode | None, str | None]:
-        pass
-
-
-class FrontMatterParser:
-    def __init__(self) -> None:
-        self.pattern = re.compile(r"---(\n*?)(.*?)(\n*?)---\n", re.DOTALL)
 
     def __call__(self, text: str) -> tuple[str | None, ASTnode | None, str | None]:
         text = preprocess(text)
@@ -35,20 +26,24 @@ class FrontMatterParser:
 
         forward = text[: match.start()] if match.start() > 0 else None
         backward = text[match.end() :] if match.end() < len(text) else None
+        node = self.get_ast_node(match)
+        return forward, node, backward
+
+
+class FrontMatterParser(BlockParser):
+    def __init__(self) -> None:
+        self.pattern = re.compile(r"---(\n*?)(.*?)(\n*?)---\n", re.DOTALL)
+
+    def get_ast_node(self, match: re.Match) -> ASTnode:
         raw = match.group(2)
         data = yaml.load(raw, Loader=yaml.FullLoader)
-        return (
-            forward,
-            ASTnode(
-                "front_matter", pattern=self.pattern, raw=raw, data=data, is_leaf=True
-            ),
-            backward,
+        return ASTnode(
+            "front_matter", pattern=self.pattern, raw=raw, data=data, is_leaf=True
         )
 
 
-class CodeBlockParser:
+class CodeBlockParser(BlockParser):
     def __init__(self) -> None:
-        # TODO: support to parser code block in callout block
         self.pattern = re.compile(
             r"(?m:^)"
             r"(?P<indent>\s*)"
@@ -92,27 +87,17 @@ class CodeBlockParser:
     #     text_clean += parts[-1]
     #     return text_clean
 
-    def __call__(self, text: str) -> tuple[str | None, ASTnode | None, str | None]:
-        match = self.pattern.search(text)
-        if not match:
-            return None, None, text
-
-        forward = text[: match.start()] if match.start() > 0 else None
-        backward = text[match.end() :] if match.end() < len(text) else None
-        return (
-            forward,
-            ASTnode(
-                "code_block",
-                pattern=self.pattern,
-                raw=match.group("code"),
-                data={"lang": match.group("lang")},
-                is_leaf=True,
-            ),
-            backward,
+    def get_ast_node(self, match: re.Match) -> ASTnode:
+        return ASTnode(
+            "code_block",
+            pattern=self.pattern,
+            raw=match.group("code"),
+            data={"lang": match.group("lang")},
+            is_leaf=True,
         )
 
 
-class SectionParser:
+class SectionParser(BlockParser):
     def __init__(self, level: int = 1):
         self.level = level
         # (?m:^)表示启用多行模式的^，此时其不表示文本的开始，而是每一行的开始
@@ -131,56 +116,31 @@ class SectionParser:
             rf"((?=(?m:^) {{0,3}}{"#" * level} )|$)",  # match the title line of next section, use loookahead assertion
         )
 
-    def __call__(self, text: str) -> tuple[str | None, ASTnode | None, str | None]:
-        text = preprocess(text)
-        match = self.pattern.search(text)
-        if not match:
-            return None, None, text
-
-        forward = text[: match.start()] if match.start() > 0 else None
-        backward = text[match.end() :] if match.end() < len(text) else None
+    def get_ast_node(self, match: re.Match) -> ASTnode:
         title = match.group("title")
         raw = match.group("content")
-
-        return (
-            forward,
-            ASTnode(
-                f"section{self.level}",
-                pattern=self.pattern,
-                raw=raw,
-                data={"title": title},
-            ),
-            backward,
+        return ASTnode(
+            f"section{self.level}",
+            pattern=self.pattern,
+            raw=raw,
+            data={"title": title},
         )
 
 
-class MathBlockParser:
+class MathBlockParser(BlockParser):
     def __init__(self) -> None:
         self.pattern = re.compile(r"^\s*\$\$(.*?)\$\$\s*\n", re.DOTALL | re.M)
 
-    def __call__(self, text: str) -> tuple[str | None, ASTnode | None, str | None]:
-        text = preprocess(text)
-        match = self.pattern.search(text)
-        if not match:
-            return None, None, text
-
-        forward = text[: match.start()] if match.start() > 0 else None
-        backward = text[match.end() :] if match.end() < len(text) else None
-        raw = match.group(1)
-
-        return (
-            forward,
-            ASTnode(
-                "math_block",
-                pattern=self.pattern,
-                raw=raw,
-                is_leaf=True,
-            ),
-            backward,
+    def get_ast_node(self, match: re.Match) -> ASTnode:
+        return ASTnode(
+            "math_block",
+            pattern=self.pattern,
+            raw=match.group(1),
+            is_leaf=True,
         )
 
 
-class CalloutParser:
+class CalloutParser(BlockParser):
     def __init__(self) -> None:
         self.pattern = re.compile(
             r"(?m:^)\s*?>\s*"  # 匹配行首的>和空格
@@ -188,58 +148,36 @@ class CalloutParser:
             r"(?P<collapse>[-+]?)"  # 匹配是否存在折叠符号
             r"(?P<title>.*?)"  # 匹配title
             r"\n(?P<content>(?s:.)*?)"  # 匹配content
-            r"(((?m:^)\s*?[^>])|$)",
-            re.VERBOSE,
+            r"((?=(?m:^)\s*?[^>])|$)",
         )
         self.line_start_pattern = re.compile(r"^\s*?>\s*", re.M)
 
-    def __call__(self, text: str) -> tuple[str | None, ASTnode | None, str | None]:
-        text = preprocess(text)
-        match = self.pattern.search(text)
-        if not match:
-            return None, None, text
-
-        forward = text[: match.start()] if match.start() > 0 else None
-        backward = (
-            text[match.end("content") :] if match.end("content") < len(text) else None
-        )
+    def get_ast_node(self, match: re.Match) -> ASTnode:
         category = match.group("category").strip()
         collapase = match.group("collapse").strip()
         title = match.group("title").strip()
         raw = match.group("content")
         # 需要处理以下content，将每一行前面带有的>和空格去掉
         raw = self.line_start_pattern.sub(r"", raw).strip()
-
-        return (
-            forward,
-            ASTnode(
-                "callout",
-                pattern=self.pattern,
-                raw=raw,
-                data={
-                    "category": category,
-                    "collapse": collapase,
-                    "title": title,
-                },
-            ),
-            backward,
+        return ASTnode(
+            "callout",
+            pattern=self.pattern,
+            raw=raw,
+            data={
+                "category": category,
+                "collapse": collapase,
+                "title": title,
+            },
         )
 
 
-class ImageLinkParser:
+class ImageLinkParser(BlockParser):
     def __init__(self) -> None:
         self.pattern = re.compile(
             r"(\!\[\[(?P<wiki>.+?)\]\])|(\!\[(?P<title>.*?)]\((?P<link>.+?)\))"
         )
 
-    def __call__(self, text: str) -> tuple[str | None, ASTnode | None, str | None]:
-        text = preprocess(text)
-        match = self.pattern.search(text)
-        if not match:
-            return None, None, text
-
-        forward = text[: match.start()] if match.start() > 0 else None
-        backward = text[match.end() :] if match.end() < len(text) else None
+    def get_ast_node(self, match: re.Match) -> ASTnode:
         data = {}
         if match["wiki"]:
             split_res = match["wiki"].split("|")
@@ -262,15 +200,11 @@ class ImageLinkParser:
         else:
             data["category"] = "img"
 
-        return (
-            forward,
-            ASTnode(
-                "image_link",
-                pattern=self.pattern,
-                data=data,
-                is_leaf=True,
-            ),
-            backward,
+        return ASTnode(
+            "image_link",
+            pattern=self.pattern,
+            data=data,
+            is_leaf=True,
         )
 
 
@@ -368,7 +302,7 @@ class ListBlockParser:
         )
 
 
-class QuoteBlockParser:
+class QuoteBlockParser(BlockParser):
     def __init__(self) -> None:
         self.pattern = re.compile(
             r"(?m:^)> "  # 匹配行首的>和空格
@@ -379,25 +313,14 @@ class QuoteBlockParser:
         )
         self.line_start_pattern = re.compile(r"^> ", re.M)
 
-    def __call__(self, text: str) -> tuple[str | None, ASTnode | None, str | None]:
-        text = preprocess(text)
-        match = self.pattern.search(text)
-        if not match:
-            return None, None, text
-
-        forward = text[: match.start()] if match.start() > 0 else None
-        backward = text[match.end() :] if match.end() < len(text) else None
+    def get_ast_node(self, match: re.Match) -> ASTnode:
         raw = match.group()
         raw = self.line_start_pattern.sub(r"", raw)
 
-        return (
-            forward,
-            ASTnode(
-                "quote",
-                pattern=self.pattern,
-                raw=raw,
-            ),
-            backward,
+        return ASTnode(
+            "quote",
+            pattern=self.pattern,
+            raw=raw,
         )
 
 
@@ -414,24 +337,14 @@ class ParagraphParser:
         )
 
 
-class HorizontalRuleParser:
+class HorizontalRuleParser(BlockParser):
     def __init__(self) -> None:
         self.pattern = re.compile(r"(?m:^)([-\*_]{3,}|\* \* \*|_ _ _|- - -)\s*\n")
 
-    def __call__(self, text: str) -> tuple[str | None, ASTnode | None, str | None]:
-        text = preprocess(text)
-        match = self.pattern.search(text)
-        if not match:
-            return None, None, text
-        forward = text[: match.start()] if match.start() > 0 else None
-        backward = text[match.end() :] if match.end() < len(text) else None
-        return (
-            forward,
-            ASTnode(
-                "horizontal_rule",
-                pattern=self.pattern,
-                raw=match.group(),
-                is_leaf=True,
-            ),
-            backward,
+    def get_ast_node(self, match: re.Match) -> ASTnode:
+        return ASTnode(
+            "horizontal_rule",
+            pattern=self.pattern,
+            raw=match.group(),
+            is_leaf=True,
         )
