@@ -316,3 +316,26 @@ print(1234)
 456
 
 ===section_with_comment===
+
+===footnote_base===
+
+This is a simple footnote[^1].
+
+[^1]: aaa
+[^2]: bbb
+  cccc
+[^note]: dddd
+
+xxxxxxxxxx
+
+===footnote_base===
+
+===footnote_end===
+
+This is a simple footnote[^1].
+
+[^1]: aaa
+[^2]: bbb
+  cccc
+[^note]: dddd
+===footnote_end===

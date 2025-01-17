@@ -348,3 +348,26 @@ class HorizontalRuleParser(BlockParser):
             raw=match.group(),
             is_leaf=True,
         )
+
+
+class FootNoteParser(BlockParser):
+    def __init__(self) -> None:
+        self.pattern = re.compile(
+            r"(?m:^)"
+            r"(?P<content>\[\^.+?\]: "
+            r"(?s:.)*?)"
+            r"(?m:^)(?!(\ \ |\[\^.+?\]))"
+        )
+        self.key_pattern = re.compile(
+            r"(?m:^)\[\^(?P<key>.+?)\]: (?P<content>(?s:.)*?)(?=(?m:^)\[\^.+?\]: |$)"
+        )
+
+    def get_ast_node(self, match: re.Match) -> ASTnode:
+        content = match.group("content")
+        res = self.key_pattern.findall(content)
+        return ASTnode(
+            "footnote",
+            pattern=self.pattern,
+            data={k: v for k, v in res},
+            is_leaf=True,
+        )

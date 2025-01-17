@@ -16,7 +16,6 @@ A tool to parse obsidian markdown note into a abstract syntax tree (AST) and the
 
 - [x] front matter block
 - [x] Paragraph
-- [ ] Line
 - [-] image link, including internal and external link styles
 - [x] Section block, based on heading level
 - [x] quote block
@@ -25,7 +24,7 @@ A tool to parse obsidian markdown note into a abstract syntax tree (AST) and the
 - [x] call out
 - [x] list block, including ordered, unordered, and task list
 - [x] horizontal rule
-- [ ] footnote block
+- [x] footnote block
 - [ ] comments block(%% %%), which is only visible in editing view
 - [ ] tables
 - [ ] [link to a block](https://help.obsidian.md/Linking+notes+and+files/Internal+links#Link+to+a+block+in+a+note)
