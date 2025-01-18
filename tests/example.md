@@ -317,6 +317,20 @@ print(1234)
 
 ===section_with_comment===
 
+===section_with_inline_code===
+
+# Section 1
+
+12345
+
+## Subsection 1.1
+
+1234 `print` function
+
+456
+
+===section_with_inline_code===
+
 ===footnote_base===
 
 This is a simple footnote[^1].

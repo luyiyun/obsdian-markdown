@@ -112,7 +112,7 @@ class SectionParser(BlockParser):
             rf"{'#' * level}"  # match specific-level number sign
             r" "  # match one space after level sign
             r"(?P<title>.*)\n"  # match title, here dot cannot match \n, so we use greedy mode
-            r"(?P<content>([^`]|(```(?s:.)*?```))*?)"  # match the all content under the title, and the code block tags (```) must be paired
+            r"(?P<content>([^`]|(```(?s:.)*?```)|(`.*?`))*?)"  # match the all content under the title, and the code block tags (```) must be paired
             rf"((?=(?m:^) {{0,3}}{"#" * level} )|$)",  # match the title line of next section, use loookahead assertion
         )
 
