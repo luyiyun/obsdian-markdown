@@ -4,9 +4,15 @@ from obsidian_markdown.block_parser import ParagraphParser
 def test_base_paragraph_parse(test_data: dict[str, str]):
     content = test_data["paragraph_base"]
     parser = ParagraphParser()
-    _, nodes, _ = parser(content)
-    assert isinstance(nodes, list)
-    assert len(nodes) == 3
-    nodes[0].raw == "AAAA\nBBBB"
-    nodes[1].raw == "CCCC"
-    nodes[2].raw == "DDDD"
+    before, node, after = parser(content)
+    assert before is None
+    assert node.raw == "AAAA\nBBBB\n"
+
+    before, node, after = parser(after)
+    assert before is None
+    assert node.raw == "CCCC\n"
+
+    before, node, after = parser(after)
+    assert before is None
+    assert node.raw == "DDDD\n"
+    assert after is None

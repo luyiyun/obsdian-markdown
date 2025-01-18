@@ -14,6 +14,12 @@ def preprocess(text, end="\n") -> str:
 
 
 class BlockParser:
+    """
+    作为block，其所捕获的内容需要包含最后一行的换行符
+    """
+
+    identifier_pattern = re.compile(r"^([\t ]*?\n)?\^(?P<id>\S*)\s*?\n")
+
     @abstractmethod
     def get_ast_node(self, match: re.Match) -> ASTnode:
         pass
@@ -27,6 +33,15 @@ class BlockParser:
         forward = text[: match.start()] if match.start() > 0 else None
         backward = text[match.end() :] if match.end() < len(text) else None
         node = self.get_ast_node(match)
+        if backward:
+            id_match = self.identifier_pattern.search(backward)
+            if id_match:
+                node.data["id"] = id_match.group("id")
+                backward = (
+                    backward[id_match.end() :]
+                    if id_match.end() < len(backward)
+                    else None
+                )
         return forward, node, backward
 
 
@@ -51,41 +66,6 @@ class CodeBlockParser(BlockParser):
             r"(?P<code>(?s:.)*?)"
             r"(?m:^)(?P=indent)```\s*(?m:$)",
         )
-        # self.code_id_pattern = re.compile(r"\(\[<@#\$code_id (\d)&\*\%\)\]>")
-        # self.init()
-
-    # def init(self):
-    #     self.code_nodes = []
-    #
-    # def preprocess(self, text: str) -> str:
-    #     parts = self.pattern.split(text)
-    #     match = len(parts) > 1
-    #     if not match:
-    #         return text
-    #     others = parts[::4]
-    #     indents = parts[1::4]
-    #     langs = parts[2::4]
-    #     codes = parts[3::4]
-    #
-    #     code_ids = []
-    #     for i, (lang, code) in enumerate(zip(langs, codes)):
-    #         code_ids.append(f"([<@#$code_id {i}&*%)]>")
-    #         code = "\n".join([line[len(indents[i]) :] for line in code.split("\n")])
-    #         self.code_nodes.append(
-    #             ASTnode(
-    #                 "code_block",
-    #                 pattern=self.pattern,
-    #                 raw=code,
-    #                 data={"lang": lang},
-    #                 is_leaf=True,
-    #             )
-    #         )
-    #
-    #     text_clean = ""
-    #     for other, code_id, indent in zip(others, code_ids, indents):
-    #         text_clean += other + indent + code_id
-    #     text_clean += parts[-1]
-    #     return text_clean
 
     def get_ast_node(self, match: re.Match) -> ASTnode:
         return ASTnode(
@@ -129,7 +109,7 @@ class SectionParser(BlockParser):
 
 class MathBlockParser(BlockParser):
     def __init__(self) -> None:
-        self.pattern = re.compile(r"^\s*\$\$(.*?)\$\$\s*\n", re.DOTALL | re.M)
+        self.pattern = re.compile(r"^\s*\$\$(.*?)\$\$[ \t]*\n", re.DOTALL | re.M)
 
     def get_ast_node(self, match: re.Match) -> ASTnode:
         return ASTnode(
@@ -324,16 +304,17 @@ class QuoteBlockParser(BlockParser):
         )
 
 
-class ParagraphParser:
+class ParagraphParser(BlockParser):
     def __init__(self) -> None:
-        self.pattern = re.compile(r"\n\s*\n")
+        self.pattern = re.compile(r"^(?P<content>(?s:.)*?\n)([ \t]*\n|$)")
 
-    def __call__(self, text: str) -> tuple[None, list[ASTnode], None]:
-        paragraphs = self.pattern.split(text)
-        return (
-            None,
-            [ASTnode("paragraph", None, raw=para, is_leaf=True) for para in paragraphs],
-            None,
+    def get_ast_node(self, match: re.Match) -> ASTnode:
+        # TODO: 可能存在identifier存在于段落最后的情况，所以需要特殊处理
+        return ASTnode(
+            "paragraph",
+            pattern=self.pattern,
+            raw=match.group("content"),
+            is_leaf=True,
         )
 
 

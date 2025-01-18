@@ -257,6 +257,20 @@ cccccc
 
 ===math_block_base===
 
+===math_block_w_identifier===
+
+aaaaaa
+
+$$
+a = b + 2
+$$
+
+^equ-example
+
+cccccc
+
+===math_block_w_identifier===
+
 ===horizontal_rule===
 
 ***
@@ -401,3 +415,13 @@ Content | Content | Content
 
 
 
+===identifier_base===
+
+AAAA
+^abc
+
+BBBB
+
+^cdf
+
+===identifier_base===

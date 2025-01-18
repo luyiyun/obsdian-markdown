@@ -40,6 +40,7 @@ A tool to parse obsidian markdown note into a abstract syntax tree (AST) and the
 - [ ] inline code
 - [ ] inline footnote mark
 - [ ] inline comments
+- [ ] block link
 
 ### Default Render
 
