@@ -371,3 +371,55 @@ class FootNoteParser(BlockParser):
             data={k: v for k, v in res},
             is_leaf=True,
         )
+
+
+class CommentsBlockParser(BlockParser):
+    def __init__(self) -> None:
+        self.pattern = re.compile(r"(?m:^)%%(?P<content>(?s:.)*?)(?m:^)%%")
+
+    def get_ast_node(self, match: re.Match) -> ASTnode:
+        return ASTnode(
+            "comment",
+            pattern=self.pattern,
+            raw=match.group("content"),
+            is_leaf=True,
+        )
+
+
+class TableParser(BlockParser):
+    def __init__(self) -> None:
+        self.pattern = re.compile(
+            r"(?m:^)(?P<header>.*?)\n"
+            r"(?m:^)(?P<header_sep>\|?(?:\s*:?-+:?\s*\|)*?\s*:?-+:?\s*\|?)\n"
+            r"(?m:^)(?P<content>(?s:.)*?)((?m:$)|$)"
+            r"(?=((?m:^)[^|]*?(?m:$)))"
+        )
+
+    def get_ast_node(self, match: re.Match) -> ASTnode:
+        header = match.group("header")
+        headers = [s.strip() for s in header.strip("| ").split("|")]
+
+        header_sep = match.group("header_sep")
+        seps = [s.strip() for s in header_sep.strip("| ").split("|")]
+        aligns = []
+        for sep in seps:
+            if sep.startswith(":") and sep.endswith(":"):
+                aligns.append("center")
+            elif sep.endswith(":"):
+                aligns.append("right")
+            else:
+                aligns.append("left")
+
+        node = ASTnode(
+            "table",
+            pattern=self.pattern,
+            data={"header": headers, "align": aligns},
+            is_leaf=False,
+        )
+
+        content = match.group("content").strip("\n")
+        for row in content.split("\n"):
+            for s in row.strip("| ").split("|"):
+                node.children.append(ASTnode("table_cell", raw=s.strip()))
+
+        return node

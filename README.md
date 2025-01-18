@@ -25,8 +25,8 @@ A tool to parse obsidian markdown note into a abstract syntax tree (AST) and the
 - [x] list block, including ordered, unordered, and task list
 - [x] horizontal rule
 - [x] footnote block
-- [ ] comments block(%% %%), which is only visible in editing view
-- [ ] tables
+- [x] comments block(%% %%), which is only visible in editing view
+- [x] tables
 - [ ] [link to a block](https://help.obsidian.md/Linking+notes+and+files/Internal+links#Link+to+a+block+in+a+note)
 
 ### Inline Parsers

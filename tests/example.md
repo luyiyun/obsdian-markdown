@@ -353,3 +353,51 @@ This is a simple footnote[^1].
   cccc
 [^note]: dddd
 ===footnote_end===
+
+===comment_block_base===
+aaa
+%%
+This is a block comment.
+
+Block comments can span multiple lines.
+%%
+bbb
+===comment_block_base===
+
+===table_base===
+aaa
+
+| First name | Last name |
+| ---------- | --------- |
+| Max        | Planck    |
+| Marie      | Curie     |
+
+bbb
+===table_base===
+
+===table_one_column===
+| First name |
+| ---------- |
+| Max        |
+| Marie      |
+===table_one_column===
+
+===table_simple===
+
+First name | Last name
+-- | --
+Max | Planck
+Marie | Curie
+
+===table_simple===
+
+
+===table_with_align===
+Left-aligned text | Center-aligned text | Right-aligned text
+:-- | :--: | --:
+Content | Content | Content
+===table_with_align===
+
+
+
+
