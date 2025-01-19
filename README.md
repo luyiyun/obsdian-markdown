@@ -16,7 +16,7 @@ A tool to parse obsidian markdown note into a abstract syntax tree (AST) and the
 
 - [x] front matter block
 - [x] Paragraph
-- [-] image link, including internal and external link styles
+- [x] image link, including internal and external link styles
 - [x] Section block, based on heading level
 - [x] quote block
 - [x] code block, use the same method as other blocks to parse
