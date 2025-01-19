@@ -8,6 +8,7 @@ from .ast import ASTnode
 
 
 def preprocess(text, end="\n") -> str:
+    # text = text.lstrip("\n ")
     if end and not text.endswith("\n"):
         text += "\n"
     return text
@@ -15,7 +16,15 @@ def preprocess(text, end="\n") -> str:
 
 class BlockParser:
     """
-    作为block，其所捕获的内容需要包含最后一行的换行符
+    作为block，
+    首先将开头的空格和换行符去掉，
+    其所捕获的内容需要包含最后一行的换行符
+
+    因为是block，所以不同的block之间默认是存在空行的，
+    我们render的时候会按照这个方式来render。
+    但是在解析的时候，书写的markdown文本可能并不会严格按照这个
+    方式来书写，所以可能两个block之间不存在空行，但这没有什么
+    问题，正常obsidian markdown在渲染时也会自动添加空行。
     """
 
     identifier_pattern = re.compile(r"^([\t ]*?\n)?\^(?P<id>\S*)\s*?\n")
@@ -33,7 +42,7 @@ class BlockParser:
         forward = text[: match.start()] if match.start() > 0 else None
         backward = text[match.end() :] if match.end() < len(text) else None
         node = self.get_ast_node(match)
-        if backward:
+        if backward and "id" not in node.data:
             id_match = self.identifier_pattern.search(backward)
             if id_match:
                 node.data["id"] = id_match.group("id")
@@ -307,13 +316,23 @@ class QuoteBlockParser(BlockParser):
 class ParagraphParser(BlockParser):
     def __init__(self) -> None:
         self.pattern = re.compile(r"^(?P<content>(?s:.)*?\n)([ \t]*\n|$)")
+        self.para_ident_pattern = re.compile(r"(?m:^)\^(?P<id>\S*)\s*?$")
 
     def get_ast_node(self, match: re.Match) -> ASTnode:
-        # TODO: 可能存在identifier存在于段落最后的情况，所以需要特殊处理
+        content = match.group("content")
+        id_match = self.para_ident_pattern.search(content)
+        if id_match:
+            return ASTnode(
+                "paragraph",
+                pattern=self.pattern,
+                raw=content[: id_match.start()].strip("\n "),
+                data={"id": id_match.group("id")},
+                is_leaf=True,
+            )
         return ASTnode(
             "paragraph",
             pattern=self.pattern,
-            raw=match.group("content"),
+            raw=content.strip("\n "),
             is_leaf=True,
         )
 

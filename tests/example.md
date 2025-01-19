@@ -405,15 +405,11 @@ Marie | Curie
 
 ===table_simple===
 
-
 ===table_with_align===
 Left-aligned text | Center-aligned text | Right-aligned text
 :-- | :--: | --:
 Content | Content | Content
 ===table_with_align===
-
-
-
 
 ===identifier_base===
 
@@ -425,3 +421,12 @@ BBBB
 ^cdf
 
 ===identifier_base===
+
+===identifier_duplicate===
+
+AAAA
+^abc
+
+^cdf
+
+===identifier_duplicate===
