@@ -7,7 +7,7 @@ def test_base_unordered_parse(test_data: dict[str, str]):
     for icon in ["-", "*", "+"]:
         text = content.replace("-", icon)
         before, node, after = parser(text)
-        assert not before.strip()
+        assert before is None
         assert after.strip() == "123455"
         assert node.name == "list_block"
         assert len(node.children) == 3
@@ -75,7 +75,7 @@ def test_base_ordered_parse(test_data: dict[str, str]):
     content = test_data["ordered_list_block_base"]
     parser = ListBlockParser(order=True)
     before, node, after = parser(content)
-    assert not before.strip()
+    assert before is None
     assert after.strip() == "123455"
     assert node.name == "list_block"
     assert node.data["order"]

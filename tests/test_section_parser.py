@@ -7,7 +7,7 @@ def test_base_section_parse(test_data: dict[str, str]):
     parser_2 = SectionParser(level=2)
 
     before, node, content2 = parser_1(content)
-    assert before.strip() == ""
+    assert before is None
     assert node.name == "section1"
     assert node.data["title"] == "Section 1"
 

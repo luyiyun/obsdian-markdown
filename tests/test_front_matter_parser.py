@@ -5,7 +5,7 @@ def test_base_front_matter_parse(test_data: dict[str, str]):
     content = test_data["front_matter_base"]
     parser = FrontMatterParser()
     before, node, after = parser(content)
-    assert before.strip() == ""
+    assert before is None
     assert after.strip() == "1234"
     assert node.name == "front_matter"
     assert node.data["title"] == "Example"

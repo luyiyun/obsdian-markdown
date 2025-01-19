@@ -35,7 +35,7 @@ def test_simple_table_parse(test_data: dict[str, str]):
     content = test_data["table_simple"]
     parser = TableParser()
     before, node, after = parser(content)
-    assert before.strip() == ""
+    assert before is None
     assert after.strip() == ""
     assert node.name == "table"
     assert node.data["header"] == ["First name", "Last name"]

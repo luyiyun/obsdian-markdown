@@ -5,7 +5,7 @@ def test_base_quote_parse(test_data: dict[str, str]):
     content = test_data["quote_base"]
     parser = QuoteBlockParser()
     before, node, after = parser(content)
-    assert before.strip() == ""
+    assert before is None
     assert after.strip() == "123455"
     assert node.name == "quote"
     assert node.raw == "This is a quote.\n"
@@ -25,7 +25,7 @@ def test_quote_multiline_parse(test_data: dict[str, str]):
     content = test_data["quote_multi_lines"]
     parser = QuoteBlockParser()
     before, node, after = parser(content)
-    assert before.strip() == ""
+    assert before is None
     assert after.strip() == ""
     assert node.name == "quote"
     assert node.raw == (

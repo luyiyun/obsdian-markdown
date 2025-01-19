@@ -5,7 +5,7 @@ def test_base_quote_parse(test_data: dict[str, str]):
     content = test_data["horizontal_rule"]
     parser = HorizontalRuleParser()
     before, node, after = parser(content)
-    assert before.strip() == ""
+    assert before is None
     assert node.name == "horizontal_rule"
     assert node.raw.strip() == "***"
 

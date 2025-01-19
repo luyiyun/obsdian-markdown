@@ -8,7 +8,7 @@ from .ast import ASTnode
 
 
 def preprocess(text, end="\n") -> str:
-    # text = text.lstrip("\n ")
+    text = text.lstrip("\n ")
     if end and not text.endswith("\n"):
         text += "\n"
     return text
